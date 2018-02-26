@@ -3,6 +3,8 @@ var parse = require('csv-parse');
 
 const phone_util = require('google-libphonenumber').PhoneNumberUtil.getInstance();
 
+var validator = require("email-validator");
+
  
 var input_file='files/input.csv';
 
@@ -95,6 +97,19 @@ function valid_phone(phone){
     }
 }
 
+function is_email_valid(email){
+    return validator.validate(email);
+}
+
+function index_email(email, addresses){
+    for(var i =0; i < addresses.length; i ++){
+        if(addresses[i].address === email){
+            return i;
+        }
+    }
+    return -1;
+}
+
 function add_address(data_index, data, type, tags){
 
     
@@ -110,7 +125,31 @@ function add_address(data_index, data, type, tags){
         }
     }
 
-    
+    if(type === "email"){
+
+        var emails = split_data_string(data);
+
+        emails.forEach(function(e){
+
+            if(is_email_valid(e)){
+                e_index = index_email(e, out_data[data_index].addresses);
+                if(e_index == -1){
+                    out_data[data_index].addresses.push({
+                        "type" : type,
+                        "tags" : tags,
+                        "address" : e
+                    });
+                }else{
+                    var t = out_data[data_index].addresses[e_index].tags;
+                    t = t.concat(tags);
+                    out_data[data_index].addresses[e_index].tags = t.filter(only_unique);
+                }
+            }
+
+        });
+
+        
+    }
 
     
 
@@ -171,8 +210,13 @@ var parser = parse({delimiter: ','}, function (err, data) {
         }
      
     });    
-    //console.log(out_data);
-    console.log(JSON.stringify(out_data));
+
+    fs.writeFile("output.json", JSON.stringify(out_data), function(err) {
+        if(err) {
+            return console.log(err);
+        }
+    }); 
+
 });
  
 fs.createReadStream(input_file).pipe(parser);
