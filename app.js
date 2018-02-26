@@ -1,19 +1,15 @@
 var fs = require('fs');
 var parse = require('csv-parse');
+
+const phone_util = require('google-libphonenumber').PhoneNumberUtil.getInstance();
+
  
-var inputFile='files/input.csv';
+var input_file='files/input.csv';
 
 var out_data = [];
 
 var headers = [];
 
-var containsEID = function(eid){
-    if(eid==="1234"){
-        return false;
-    }else{
-        return true;
-    }
-}
 
 function index_for_data(eid, fullname){
     for(var i=0; i < out_data.length; i++){
@@ -86,13 +82,37 @@ function add_class(data_index,data){
     out_data[data_index].classes =  classes.filter(only_unique);
 }
 
+function valid_phone(phone){
+    try{
+        const number = phone_util.parseAndKeepRawInput(phone, 'BR');
+        if(phone_util.isPossibleNumber(number) && phone_util.isValidNumber(number)){
+            return number.getCountryCode() + "" + number.getNationalNumber();
+        }
+        return null;
+
+    }catch(err){
+        return null;
+    }
+}
+
 function add_address(data_index, data, type, tags){
 
-    out_data[data_index].addresses.push({
-        "type" : type,
-        "tags" : tags,
-        "address" : data
-    });
+    
+
+    if(type === "phone"){
+        var phone = valid_phone(data);
+        if(phone !== null){
+            out_data[data_index].addresses.push({
+                "type" : type,
+                "tags" : tags,
+                "address" : phone
+            });
+        }
+    }
+
+    
+
+    
 
 }
  
@@ -152,7 +172,7 @@ var parser = parse({delimiter: ','}, function (err, data) {
      
     });    
     //console.log(out_data);
-    //console.log(JSON.stringify(out_data));
+    console.log(JSON.stringify(out_data));
 });
  
-fs.createReadStream(inputFile).pipe(parser);
+fs.createReadStream(input_file).pipe(parser);
